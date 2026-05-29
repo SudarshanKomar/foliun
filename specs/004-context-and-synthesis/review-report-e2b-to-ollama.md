@@ -130,15 +130,15 @@
 - **Rationale**: Complete replacement of E2B-specific integration notes with Ollama-specific notes.
 
 ## Validation Checklist
-- [ ] All E2B references replaced with Ollama in spec.md (4 locations)
-- [ ] All E2B references replaced with Ollama in plan.md (3 locations)
-- [ ] All E2B references replaced with Ollama in tasks.md (5 locations)
-- [ ] All E2B references replaced with Ollama in notes.md (2 locations)
-- [ ] Model identifier updated from "gemma-4" to "gemma-4-2b"
-- [ ] API contracts updated (E2B SDK → Ollama OpenAI-compatible API)
-- [ ] Data flows updated (cloud → local)
-- [ ] ADR reference updated (011 → 013)
-- [ ] No inconsistencies introduced
+- [x] All E2B references replaced with Ollama in spec.md (4 locations)
+- [x] All E2B references replaced with Ollama in plan.md (3 locations)
+- [x] All E2B references replaced with Ollama in tasks.md (5 locations)
+- [x] All E2B references replaced with Ollama in notes.md (2 locations)
+- [x] Model identifier updated from "gemma-4" to "gemma-4-2b"
+- [x] API contracts updated (E2B SDK → Ollama OpenAI-compatible API)
+- [x] Data flows updated (cloud → local)
+- [x] ADR reference updated (011 → 013)
+- [x] No inconsistencies introduced
 
 ## Notes
 - The model identifier in the query API changes from `"gemma-4"` to `"gemma-4-2b"` to accurately reflect the specific model variant. This is a breaking API change if any clients depend on `"gemma-4"` — acceptable since the system is not yet implemented.

@@ -56,7 +56,7 @@ Ollama runs Gemma 4 2B locally via `localhost:11434`. Key differences from OpenA
 - Less reliable instruction following (2B model has limited capability vs GPT-4o-mini)
 - Data stays local — true privacy, no external data transmission
 - Ollama must be installed and running separately from the RAG application
-- Model must be pre-pulled: `ollama pull gemma3:4b` (or appropriate Gemma 4 2B tag)
+- Model must be pre-pulled: `ollama pull gemma4:2b` (Gemma 4 2B)
 
 The Ollama integration should be abstracted behind the same `synthesize_answer()` interface so that model selection is transparent to the rest of the pipeline. Since Ollama supports the OpenAI-compatible API, the same `openai.AsyncOpenAI` client can be used with a different `base_url` parameter.
 

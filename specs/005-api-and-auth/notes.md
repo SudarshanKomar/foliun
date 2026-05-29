@@ -32,12 +32,13 @@ All errors use `{"error": "<code>", "detail": "<message>"}` format regardless of
 3. Pydantic `ErrorResponse` model ensuring type safety
 
 ### Health Check Design
-The health endpoint checks three dependencies:
+The health endpoint checks up to four dependencies:
 1. **PostgreSQL**: Execute `SELECT 1` query. Measures connection pool health and latency.
 2. **Redis**: Execute `PING` command. Measures queue availability.
 3. **OpenAI**: Make a lightweight API call (e.g., list models). Measures external API reachability.
+4. **Ollama** (optional): `GET {OLLAMA_BASE_URL}/api/tags`. Only checked when `OLLAMA_BASE_URL` is configured. Measures local LLM availability.
 
-If any dependency is unhealthy, the overall status is `unhealthy` and returns `503`. This enables load balancer health checks and monitoring alerts.
+If any required dependency is unhealthy, the overall status is `unhealthy` and returns `503`. Ollama being unavailable does not make the system unhealthy (it falls back to GPT-4o-mini per ADR-013), but its status is reported for visibility. This enables load balancer health checks and monitoring alerts.
 
 ### Correlation IDs
 Each request gets a unique correlation ID (`req-{uuid4_short}`), set in request state and propagated to all log entries, database queries, and downstream API calls. This enables tracing a single request through the full pipeline (API → worker → external APIs) for debugging.

@@ -26,7 +26,7 @@ The pipeline is designed for high recall (multi-query expansion) followed by hig
 - NFR-1: End-to-end retrieval latency (query rewrite + embed + search + RRF + rerank) must be < 4 seconds.
 - NFR-2: Query rewriting must complete in < 1.5 seconds.
 - NFR-3: 4 parallel vector searches must complete in < 500ms total (concurrent execution).
-- NFR-4: Cross-encoder reranking of 30 candidates must complete in < 500ms on CPU.
+- NFR-4: Cross-encoder reranking of 30 candidates must complete in < 1.5 seconds on CPU (sequential inference, ~50ms per pair).
 - NFR-5: RRF computation must complete in < 50ms.
 - NFR-6: System must support 10+ concurrent retrieval requests.
 - NFR-7: If query rewriting fails, gracefully degrade to original query only (single search, no RRF).

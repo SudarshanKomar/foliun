@@ -51,12 +51,12 @@
 No direct E2B references in notes.md. No changes required.
 
 ## Validation Checklist
-- [ ] E2B service name replaced with Ollama in logging wrapper (2 locations in plan.md)
-- [ ] E2B_API_KEY removed from sensitive data filter list
-- [ ] E2B logging task renamed to Ollama in tasks.md
-- [ ] E2B replaced with Ollama in spec.md FR-5
-- [ ] No inconsistencies introduced
-- [ ] Consistent with spec 004 and spec 005 changes
+- [x] E2B service name replaced with Ollama in logging wrapper (2 locations in plan.md)
+- [x] E2B_API_KEY removed from sensitive data filter list
+- [x] E2B logging task renamed to Ollama in tasks.md
+- [x] E2B replaced with Ollama in spec.md FR-5
+- [x] No inconsistencies introduced
+- [x] Consistent with spec 004 and spec 005 changes
 
 ## Notes
 - The observability impact is minimal. The logging wrapper is service-agnostic — only the service name string changes from `"e2b"` to `"ollama"`.

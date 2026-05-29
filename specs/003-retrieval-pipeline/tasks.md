@@ -31,7 +31,7 @@
 - [ ] Integration test: parallel vector search returns correct results across 4 queries (estimate: 2h)
 - [ ] Integration test: query with no relevant documents returns insufficient_context=true (estimate: 1h)
 - [ ] Performance test: retrieval pipeline latency < 4 seconds on typical queries (estimate: 1.5h)
-- [ ] Performance test: cross-encoder reranking < 500ms for 30 candidates (estimate: 1h)
+- [ ] Performance test: cross-encoder reranking < 1.5 seconds for 30 candidates (estimate: 1h)
 - [ ] Manual relevance test: compare single-query vs multi-query retrieval on 10 test queries (estimate: 2h)
 
 ## Phase 4: Documentation & Cleanup

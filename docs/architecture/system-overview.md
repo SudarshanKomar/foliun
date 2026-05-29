@@ -394,9 +394,9 @@ stateDiagram-v2
 
 ### Performance
 - **Query latency**: < 5 seconds end-to-end for typical queries (excluding LLM streaming time)
-- **First token time**: < 3 seconds from query submission to first streamed token
+- **First token time**: < 5 seconds from query submission to first streamed token
 - **Ingestion time**: < 30 seconds for a 10-page PDF (extraction + chunking + embedding)
-- **Reranking latency**: < 500ms for 30 chunks on CPU
+- **Reranking latency**: < 1.5 seconds for 30 chunks on CPU (sequential inference, ~50ms per pair)
 - **Concurrent queries**: Support 10+ concurrent query requests
 
 ### Reliability

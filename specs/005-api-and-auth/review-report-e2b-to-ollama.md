@@ -48,11 +48,11 @@ No direct E2B references in spec.md. However:
 No direct E2B references in notes.md.
 
 ## Validation Checklist
-- [ ] E2B_API_KEY replaced with OLLAMA_BASE_URL in environment variables
-- [ ] Model enum updated from "gemma-4" to "gemma-4-2b"
-- [ ] Health check consideration documented for Ollama
-- [ ] No inconsistencies introduced
-- [ ] Consistent with spec 004 model identifier change
+- [x] E2B_API_KEY replaced with OLLAMA_BASE_URL in environment variables
+- [x] Model enum updated from "gemma-4" to "gemma-4-2b"
+- [x] Health check consideration documented for Ollama
+- [x] No inconsistencies introduced
+- [x] Consistent with spec 004 model identifier change
 
 ## Notes
 - The security implications are simplified: `E2B_API_KEY` was a secret that needed to be protected in logs and environment. `OLLAMA_BASE_URL` is a non-secret URL (typically `http://localhost:11434`), reducing the sensitive data surface.

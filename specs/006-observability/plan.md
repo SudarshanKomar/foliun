@@ -194,3 +194,4 @@ The following must NEVER appear in logs:
 ## Related ADRs
 - ADR-002: Use FastAPI as the backend framework
 - ADR-009: Single worker process for ingestion and embedding
+- ADR-013: Switch from E2B to Ollama (Gemma 4 2B) for Local LLM (supersedes ADR-011)

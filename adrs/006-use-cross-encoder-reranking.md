@@ -6,7 +6,7 @@ Accepted
 ## Context
 Vector similarity search (bi-encoder) retrieves candidate chunks efficiently but with limited accuracy. Bi-encoders encode query and document independently, missing fine-grained query-document interactions. A reranking step using a cross-encoder model can significantly improve precision by jointly encoding the (query, document) pair.
 
-The reranker must run on CPU (no GPU infrastructure in Phase 1), score 30 candidates in <500ms, and produce calibrated confidence scores for relevance thresholding.
+The reranker must run on CPU (no GPU infrastructure in Phase 1), score 30 candidates in < 1.5 seconds (sequential inference, ~50ms per pair), and produce calibrated confidence scores for relevance thresholding.
 
 Candidates considered: `cross-encoder/ms-marco-MiniLM-L-6-v2`, `cross-encoder/ms-marco-MiniLM-L-12-v2`, `BAAI/bge-reranker-v2-m3`, Cohere Rerank API.
 

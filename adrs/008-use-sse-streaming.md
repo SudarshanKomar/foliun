@@ -39,4 +39,4 @@ We will use **Server-Sent Events (SSE)** over HTTP/1.1 for streaming LLM respons
 
 ## Related ADRs
 - ADR-002: Use FastAPI as the backend framework
-- ADR-011: Use GPT-4o-mini as primary LLM
+- ADR-013: Switch from E2B to Ollama (Gemma 4 2B) for Local LLM (supersedes ADR-011)

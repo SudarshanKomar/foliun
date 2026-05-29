@@ -33,11 +33,11 @@
 - [ ] Integration test: Ollama fallback — simulate Ollama unavailability, verify GPT-4o-mini fallback (estimate: 2h)
 - [ ] Integration test: SSE event format — verify token, done, error events parse correctly (estimate: 1.5h)
 - [ ] Integration test: client disconnect handling — verify clean cleanup (estimate: 1h)
-- [ ] Performance test: first token latency < 3 seconds from query submission (estimate: 1h)
+- [ ] Performance test: first token latency < 5 seconds from query submission (estimate: 1h)
 - [ ] Manual test: verify LLM respects grounding constraints on 10 test queries (estimate: 2h)
 
 ## Phase 4: Documentation & Cleanup
 - [ ] Document system prompt and grounding instructions (estimate: 0.5h)
 - [ ] Document SSE event format with examples for API consumers (estimate: 1h)
-- [ ] Document Ollama setup: installation, model pull (gemma-4-2b), configuration, and health check (estimate: 1h)
+- [ ] Document Ollama setup: installation, model pull (`ollama pull gemma4:2b`), configuration, and health check (estimate: 1h)
 - [ ] Document citation format specification (estimate: 0.5h)

@@ -137,7 +137,7 @@ SET hnsw.ef_search = 40;
 | 2. Query Embed | 4 query strings | 4 × VECTOR(1536) | < 500ms | None (fatal) |
 | 3. Vector Search | 4 query vectors | ~80 chunks | < 500ms | None (fatal) |
 | 4. RRF Fusion | ~80 chunks | 30 ranked chunks | < 50ms | None |
-| 5. Rerank | 30 chunks + query | 10 ranked chunks | < 500ms | Use RRF top 10 |
+| 5. Rerank | 30 chunks + query | 10 ranked chunks | < 1.5s | Use RRF top 10 |
 
 **Total target**: < 4 seconds (excluding context construction and LLM synthesis)
 
@@ -159,5 +159,5 @@ SET hnsw.ef_search = 40;
 - ADR-004: Use OpenAI text-embedding-3-small for embeddings
 - ADR-005: Use Reciprocal Rank Fusion for multi-query score merging
 - ADR-006: Use cross-encoder ms-marco-MiniLM-L-6-v2 for reranking
-- ADR-011: Use GPT-4o-mini as primary LLM
+- ADR-013: Switch from E2B to Ollama (Gemma 4 2B) for Local LLM (supersedes ADR-011)
 - ADR-012: Remove general knowledge fallback

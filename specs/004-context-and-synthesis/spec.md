@@ -22,7 +22,7 @@ This spec covers context assembly, system prompt design, LLM synthesis, citation
 - FR-10: Include retrieval metadata in the `done` event: number of sources used, total chunks considered, pipeline latency.
 
 ### Non-Functional Requirements
-- NFR-1: First token must arrive within 3 seconds of query submission (including retrieval pipeline time).
+- NFR-1: First token must arrive within 5 seconds of query submission (including retrieval pipeline time).
 - NFR-2: SSE connection timeout: 120 seconds (accommodates slow LLM responses for complex queries).
 - NFR-3: Context construction must complete in < 100ms.
 - NFR-4: System must support 10+ concurrent streaming responses.
@@ -50,7 +50,7 @@ This spec covers context assembly, system prompt design, LLM synthesis, citation
 - LLM generates answers that are grounded in provided context (manual verification on test set).
 - Citations in responses reference actual source documents provided in context.
 - SSE stream delivers tokens in real-time with < 100ms inter-token latency.
-- First streamed token arrives within 3 seconds of query submission.
+- First streamed token arrives within 5 seconds of query submission.
 - Insufficient context queries return the structured message without an LLM call.
 - Ollama fallback to GPT-4o-mini works transparently.
 

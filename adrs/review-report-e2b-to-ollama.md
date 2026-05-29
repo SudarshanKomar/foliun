@@ -18,9 +18,9 @@
 - **Rationale**: E2B was a paid cloud service; Ollama is a local service. The authentication rationale still holds (protecting access to compute resources) but the characterization changes from "paid external service" to "local compute resource" for the alternative LLM.
 
 ## Validation Checklist
-- [ ] E2B reference updated to Ollama in context paragraph
-- [ ] Authentication decision remains unchanged
-- [ ] No inconsistencies introduced
+- [x] E2B reference updated to Ollama in context paragraph
+- [x] Authentication decision remains unchanged
+- [x] No inconsistencies introduced
 
 ## Notes
 - This is a cosmetic change. The authentication decision (API key via `X-API-Key` header) is completely unaffected by the E2B → Ollama migration. The context paragraph merely lists the services being protected.

@@ -21,7 +21,7 @@ Document ingestion is inherently asynchronous: text extraction and chunking can 
 - FR-11: Provide document list endpoint returning all documents with their status, filename, upload time, and chunk count.
 
 ### Non-Functional Requirements
-- NFR-1: Ingestion time must be < 30 seconds for a 10-page PDF (extraction + chunking, excluding embedding).
+- NFR-1: Ingestion time must be < 30 seconds for a 10-page PDF (extraction + chunking + embedding). Extraction and chunking alone should complete in < 5 seconds; embedding adds up to 10 seconds (see spec 002).
 - NFR-2: File validation must complete in < 100ms (synchronous, in API request path).
 - NFR-3: Failed ingestion jobs must retry up to 3 times with exponential backoff (1s, 4s, 16s).
 - NFR-4: All ingestion failures must be logged with document ID, pipeline stage, error message, and timestamp.
@@ -49,7 +49,7 @@ Document ingestion is inherently asynchronous: text extraction and chunking can 
 ## Success Criteria
 - A valid PDF or TXT upload returns `202 Accepted` within 200ms with a document ID.
 - Document status transitions from `pending` → `processing` → `ready` are trackable via status API.
-- A 10-page PDF is fully chunked (extraction + chunking, excluding embedding) in < 30 seconds.
+- A 10-page PDF is fully ingested (extraction + chunking + embedding) in < 30 seconds.
 - Chunks preserve page number attribution accurately (verified against source PDF).
 - Chunk sizes are within ±10% of the 512 token target (mean chunk size between 460-564 tokens).
 - Metadata (document title, page number, chunk index, character offsets) is present on all chunks.

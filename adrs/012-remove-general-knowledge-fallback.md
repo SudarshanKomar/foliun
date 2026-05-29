@@ -37,4 +37,4 @@ We will **remove the general knowledge fallback** and replace it with an explici
 
 ## Related ADRs
 - ADR-006: Use cross-encoder ms-marco-MiniLM-L-6-v2 for reranking
-- ADR-011: Use GPT-4o-mini as primary LLM
+- ADR-013: Switch from E2B to Ollama (Gemma 4 2B) for Local LLM (supersedes ADR-011)

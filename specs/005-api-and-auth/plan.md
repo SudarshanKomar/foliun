@@ -163,11 +163,13 @@ data: {"sources_used": 2, "chunks_in_context": 5, "model": "gpt-4o-mini", "laten
   "dependencies": {
     "postgresql": {"status": "connected", "latency_ms": 5},
     "redis": {"status": "connected", "latency_ms": 2},
-    "openai": {"status": "reachable", "latency_ms": 150}
+    "openai": {"status": "reachable", "latency_ms": 150},
+    "ollama": {"status": "reachable", "latency_ms": 10}
   },
   "timestamp": "2025-01-15T10:30:00Z"
 }
 ```
+Note: The `ollama` dependency is only included when `OLLAMA_BASE_URL` is configured. Ollama health is checked via `GET {OLLAMA_BASE_URL}/api/tags`.
 
 **Response (503 Service Unavailable)**:
 ```json
@@ -177,7 +179,8 @@ data: {"sources_used": 2, "chunks_in_context": 5, "model": "gpt-4o-mini", "laten
   "dependencies": {
     "postgresql": {"status": "connected", "latency_ms": 5},
     "redis": {"status": "disconnected", "error": "Connection refused"},
-    "openai": {"status": "reachable", "latency_ms": 150}
+    "openai": {"status": "reachable", "latency_ms": 150},
+    "ollama": {"status": "reachable", "latency_ms": 10}
   },
   "timestamp": "2025-01-15T10:30:00Z"
 }
@@ -269,3 +272,4 @@ async def verify_api_key(x_api_key: str = Header(...)):
 - ADR-002: Use FastAPI as the backend framework
 - ADR-008: Use Server-Sent Events for response streaming
 - ADR-010: Use API key authentication for Phase 1
+- ADR-013: Switch from E2B to Ollama (Gemma 4 2B) for Local LLM (supersedes ADR-011)
