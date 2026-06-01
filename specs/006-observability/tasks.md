@@ -15,7 +15,7 @@
 - [ ] Implement query pipeline stage logging: rewrite, embed, search, RRF, rerank, context, synthesis with per-stage latency (estimate: 4h)
 - [ ] Implement external API call logging wrapper for OpenAI calls (service, operation, latency, status) (estimate: 1.5h)
 - [ ] Implement external API call logging wrapper for Ollama calls (estimate: 1h)
-- [ ] Implement embedding cost tracking log entry: document_id, total_tokens, estimated_cost_usd (estimate: 0.5h)
+- [ ] Implement embedding performance tracking log entry: document_id, chunks, embedding_model, latency_ms (estimate: 0.5h)
 - [ ] Implement first-token latency tracking for LLM streaming responses (estimate: 1h)
 - [ ] Implement sensitive data filtering: ensure API keys, file content, embedding vectors never logged (estimate: 1.5h)
 - [ ] Implement log entry size guard: truncate chunk content to 100 chars, cap entries at 10KB (estimate: 1h)

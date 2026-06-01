@@ -21,7 +21,7 @@ Reference: `/docs/architecture/system-overview.md` — Query Pipeline Components
 4. Build context string, iterating chunks:
    - For each chunk, prepend `[Source: {document_title}, Page: {page_number}]\n`
    - Append chunk content + `\n\n`
-   - Track cumulative token count (via tiktoken)
+   - Track cumulative token count (via BERT WordPiece tokenizer)
    - Stop adding chunks when budget (~4000 tokens) would be exceeded
 5. Assemble full prompt:
    - System prompt (grounding instructions)
@@ -119,7 +119,7 @@ class SourceInfo:
 async def synthesize_answer(
     query: str,
     context: ContextResult,
-    model: str = "gpt-4o-mini",
+    model: str = "gemma-4-2b",
 ) -> AsyncGenerator[SSEEvent, None]:
     """Generate streamed answer from context using selected LLM.
     
@@ -131,10 +131,10 @@ async def synthesize_answer(
 This spec does not write to or read from the database directly. It consumes `RetrievalResult` from spec 003 and produces SSE output to the client.
 
 ### Token Counting
-- Use `tiktoken` with `cl100k_base` encoding (matches GPT-4o-mini tokenizer)
+- Use BERT WordPiece tokenizer from `BAAI/bge-base-en-v1.5` via `transformers.AutoTokenizer` for consistent token counting across the system (same tokenizer used for chunking in spec 001)
 - Count tokens for: system prompt (~100 tokens) + context + user query
 - Reserve ~4000 tokens for context, ~200 for system prompt + query overhead
-- Model input limit: 128K tokens (GPT-4o-mini) — well within budget
+- Model input limits: 8192 tokens (Gemma 4 2B), 128K tokens (GPT-4o-mini). The ~4200 total budget fits comfortably within both limits.
 
 ## Pipeline Stages
 
@@ -169,7 +169,7 @@ This spec does not write to or read from the database directly. It consumes `Ret
 | LLM API timeout | `asyncio.TimeoutError` (120s) | `error: {"error": "llm_timeout"}` | Close stream |
 | LLM API 5xx | HTTP status code | `error: {"error": "llm_unavailable"}` | Close stream |
 | LLM API 401 | HTTP 401 | `error: {"error": "llm_auth_failed"}` | Close stream |
-| Ollama unavailable | Connection error (localhost:11434) | `token: {"content": "[Using GPT-4o-mini as fallback] "}` | Retry with GPT-4o-mini |
+| Ollama unavailable | Connection error (localhost:11434) | `error: {"error": "llm_unavailable", "detail": "Ollama is not running"}` | Return 503 (no fallback) |
 | Client disconnect | `ConnectionResetError` | None | Cancel LLM call, cleanup |
 | Token budget exceeded | Token count check | N/A | Exclude lowest-scored chunks |
 | Invalid citation detected | Regex + source list check | None | Log warning (non-fatal) |

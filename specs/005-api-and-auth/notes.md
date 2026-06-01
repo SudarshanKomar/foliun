@@ -32,13 +32,19 @@ All errors use `{"error": "<code>", "detail": "<message>"}` format regardless of
 3. Pydantic `ErrorResponse` model ensuring type safety
 
 ### Health Check Design
-The health endpoint checks up to four dependencies:
+The health endpoint checks dependencies in two tiers:
+
+**Required** (failure → 503 unhealthy):
 1. **PostgreSQL**: Execute `SELECT 1` query. Measures connection pool health and latency.
 2. **Redis**: Execute `PING` command. Measures queue availability.
-3. **OpenAI**: Make a lightweight API call (e.g., list models). Measures external API reachability.
-4. **Ollama** (optional): `GET {OLLAMA_BASE_URL}/api/tags`. Only checked when `OLLAMA_BASE_URL` is configured. Measures local LLM availability.
+3. **Ollama**: `GET {OLLAMA_BASE_URL}/api/tags`. Measures local LLM availability **and** verifies that the required `gemma4:2b` model is pulled and available. Ollama is **required** for default operation — if unavailable or the model is missing, the system cannot process queries. Report both service status and model availability in the health response.
 
-If any required dependency is unhealthy, the overall status is `unhealthy` and returns `503`. Ollama being unavailable does not make the system unhealthy (it falls back to GPT-4o-mini per ADR-013), but its status is reported for visibility. This enables load balancer health checks and monitoring alerts.
+**Optional** (reported for visibility only):
+4. **OpenAI**: Only checked when `OPENAI_API_KEY` is configured. Make a lightweight API call (e.g., list models). Omitted from response if not configured.
+
+If any **required** dependency is unhealthy, the overall status is `unhealthy` and returns `503`. There is no automatic fallback from Ollama to GPT-4o-mini (per ADR-013). This enables load balancer health checks and monitoring alerts.
+
+Note: The embedding model (`BAAI/bge-base-en-v1.5`) is loaded in-process at startup and does not require a separate health check endpoint. If the model fails to load, the application will not start. The health endpoint implicitly confirms embedding availability by virtue of the application being running.
 
 ### Correlation IDs
 Each request gets a unique correlation ID (`req-{uuid4_short}`), set in request state and propagated to all log entries, database queries, and downstream API calls. This enables tracing a single request through the full pipeline (API → worker → external APIs) for debugging.

@@ -11,8 +11,8 @@ The pipeline is designed for high recall (multi-query expansion) followed by hig
 
 ### Functional Requirements
 - FR-1: Accept a user query string (1-2000 characters) and return a ranked list of the top 10 most relevant chunks.
-- FR-2: Use GPT-4o-mini to generate 3 semantically diverse query variants from the original query. The original query is also retained, yielding 4 total queries.
-- FR-3: Embed all 4 queries using OpenAI `text-embedding-3-small` (same model as ingestion) to produce 4 query vectors of 1536 dimensions.
+- FR-2: Use the configured LLM (Gemma 4 2B via Ollama by default, or GPT-4o-mini if user opted in) to generate 3 semantically diverse query variants from the original query. The original query is also retained, yielding 4 total queries.
+- FR-3: Embed all 4 queries using `BAAI/bge-base-en-v1.5` with query instruction prefix (same model as ingestion) to produce 4 query vectors of 768 dimensions.
 - FR-4: Execute 4 parallel cosine similarity searches against the pgvector HNSW index, each retrieving the top 20 chunks.
 - FR-5: Merge and deduplicate results from all 4 searches by `(document_id, chunk_index)` composite key.
 - FR-6: Apply Reciprocal Rank Fusion (RRF) with k=60 to compute fused scores from rank positions across all 4 result sets.
@@ -33,14 +33,14 @@ The pipeline is designed for high recall (multi-query expansion) followed by hig
 - NFR-8: If cross-encoder reranking fails, gracefully degrade to RRF-only ranking.
 
 ## Constraints
-- **Embedding model**: Must use `text-embedding-3-small` for query embeddings — same model as chunk embeddings. Mismatched models produce incomparable vector spaces.
+- **Embedding model**: Must use `BAAI/bge-base-en-v1.5` for query embeddings — same model as chunk embeddings. Query embeddings use the instruction prefix `"Represent this sentence for searching relevant passages: "`. Mismatched models produce incomparable vector spaces.
 - **Cross-encoder**: Runs on CPU in-process via `sentence-transformers`. No GPU. Model loaded at application startup.
 - **Parallelism**: Vector searches run concurrently via `asyncio.gather()`. Cross-encoder is CPU-bound and runs in a thread pool executor.
 - **Scope boundary**: This spec produces a ranked chunk list. Context construction and LLM synthesis are handled by spec 004.
 
 ## Failure Cases
-- **Query rewriting fails** (OpenAI API error): Degrade to single original query. Log warning. Proceed with 1 search instead of 4.
-- **Query embedding fails** (OpenAI API error): Return `503 Service Unavailable` with error `"Embedding service temporarily unavailable"`. No fallback.
+- **Query rewriting fails** (LLM error — Ollama connection refused, model timeout, or OpenAI API error if opted in): Degrade to single original query. Log warning. Proceed with 1 search instead of 4.
+- **Query embedding fails** (model inference error): Return `503 Service Unavailable` with error `"Embedding service temporarily unavailable"`. No fallback.
 - **Vector search fails** (pgvector error): Return `503 Service Unavailable` with error `"Vector search temporarily unavailable"`.
 - **Cross-encoder fails** (model error, timeout): Degrade to RRF-only ranking. Return top 10 by RRF score. Log warning. Include `"reranking_skipped": true` in response metadata.
 - **Cross-encoder timeout** (> 2 seconds): Cancel reranking, use RRF-only. Log warning.

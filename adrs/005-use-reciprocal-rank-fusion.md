@@ -42,4 +42,4 @@ RRF formula: `RRF_score(d) = Σ 1 / (k + rank_i(d))` where `rank_i(d)` is the ra
 
 ## Related ADRs
 - ADR-006: Use cross-encoder ms-marco-MiniLM-L-6-v2 for reranking
-- ADR-004: Use OpenAI text-embedding-3-small for embeddings
+- ADR-014: Migrate to Local Embedding Model (BAAI/bge-base-en-v1.5) (supersedes ADR-004)

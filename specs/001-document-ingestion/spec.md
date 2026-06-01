@@ -21,7 +21,7 @@ Document ingestion is inherently asynchronous: text extraction and chunking can 
 - FR-11: Provide document list endpoint returning all documents with their status, filename, upload time, and chunk count.
 
 ### Non-Functional Requirements
-- NFR-1: Ingestion time must be < 30 seconds for a 10-page PDF (extraction + chunking + embedding). Extraction and chunking alone should complete in < 5 seconds; embedding adds up to 10 seconds (see spec 002).
+- NFR-1: Ingestion time must be < 30 seconds for a 10-page PDF (extraction + chunking + embedding). Extraction and chunking alone should complete in < 5 seconds; local embedding adds up to 15 seconds on CPU (see spec 002).
 - NFR-2: File validation must complete in < 100ms (synchronous, in API request path).
 - NFR-3: Failed ingestion jobs must retry up to 3 times with exponential backoff (1s, 4s, 16s).
 - NFR-4: All ingestion failures must be logged with document ID, pipeline stage, error message, and timestamp.
@@ -29,7 +29,7 @@ Document ingestion is inherently asynchronous: text extraction and chunking can 
 - NFR-6: File storage must be outside web-accessible paths to prevent direct file access.
 
 ## Constraints
-- **Technology**: PyMuPDF (fitz) for PDF extraction, `tiktoken` with `cl100k_base` for token counting, `arq` for job queue.
+- **Technology**: PyMuPDF (fitz) for PDF extraction, BERT WordPiece tokenizer from `BAAI/bge-base-en-v1.5` via `transformers.AutoTokenizer` for token counting (matches embedding model exactly), `arq` for job queue.
 - **Scope**: Only PDF and TXT files supported. No OCR, no DOCX, no image extraction from PDFs.
 - **Language**: English-language documents only. No multilingual tokenization or encoding handling beyond UTF-8.
 - **Trust model**: Documents are trusted — no malware scanning, no content filtering beyond file type/size validation.
@@ -61,6 +61,6 @@ Document ingestion is inherently asynchronous: text extraction and chunking can 
 - OCR for scanned/image-based PDFs
 - DOCX, XLSX, or other file format support
 - Document versioning or content updates
-- Document deletion
+- Document deletion (deferred to Phase 2; the schema uses `ON DELETE CASCADE` so a future `DELETE /api/v1/documents/{id}` endpoint requires no schema change)
 - Metadata extraction beyond filename, page numbers, and section headers
 - Content-based deduplication (only file-hash deduplication)

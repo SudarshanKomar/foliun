@@ -20,7 +20,7 @@ Phase 1 focuses exclusively on document-centric RAG fundamentals:
 - PDF and text document ingestion
 - Text extraction from documents
 - Chunking with overlap strategies (recursive character splitting)
-- Embedding generation (OpenAI `text-embedding-3-small`, 1536 dimensions) and storage
+- Embedding generation (`BAAI/bge-base-en-v1.5` via `sentence-transformers`, 768 dimensions) and storage
 - Vector similarity search (pgvector HNSW, cosine distance)
 - Query rewriting and multi-query generation (original + 3 variants)
 - Reciprocal Rank Fusion (RRF) for multi-query score merging
@@ -50,8 +50,8 @@ graph TB
     User((User)) --> API[API Server]
     API --> PostgreSQL[(PostgreSQL + pgvector)]
     API --> Redis[(Redis Queue)]
-    API --> OpenAI[OpenAI API]
     API --> Ollama[Ollama Local LLM]
+    API -.-> OpenAI[OpenAI API]
     
     subgraph "AI Workspace System"
         API
@@ -59,21 +59,21 @@ graph TB
         Redis
     end
     
-    subgraph "External Services"
-        OpenAI
-    end
-    
     subgraph "Local Services"
         Ollama
+    end
+    
+    subgraph "External Services - Optional"
+        OpenAI
     end
 ```
 
 **External Entities:**
 - **User**: Interacts with the system via REST API or UI
-- **OpenAI API**: Provides GPT-4o-mini for query rewriting and answer generation; provides `text-embedding-3-small` (1536d) for embedding generation
-- **Ollama**: Locally-hosted LLM server running Gemma 4 2B as an alternative LLM for privacy and cost control. Runs on `localhost:11434`. Data never leaves the user's infrastructure. See ADR-013.
+- **Ollama**: Locally-hosted LLM server running Gemma 4 2B as the **default** LLM. Runs on `localhost:11434`. Data never leaves the user's infrastructure. Used for query rewriting and answer synthesis. See ADR-013.
+- **OpenAI API** *(optional)*: Provides GPT-4o-mini as an **opt-in alternative** LLM for query rewriting and answer generation. Only available when the user explicitly sets `OPENAI_API_KEY` and selects `model: "gpt-4o-mini"` in the query request. Not required for default operation.
 
-> **Note**: Ollama provides true local/private execution. When using Ollama with Gemma 4 2B, no data leaves the user's infrastructure. This fulfills the privacy requirement. See ADR-013.
+> **Note**: By default, **no data leaves the user's infrastructure**. All embedding generation uses the local `BAAI/bge-base-en-v1.5` model. All LLM operations use Gemma 4 2B via Ollama. OpenAI is only contacted when the user explicitly opts in. See ADR-013, ADR-014.
 
 ## Container View (C4 Level 2)
 
@@ -95,28 +95,27 @@ graph TB
         FileStorage[Local File Storage]
     end
     
-    subgraph "External Services"
-        OpenAI[OpenAI API]
-    end
-    
     subgraph "Local Services"
         Ollama[Ollama - Gemma 4 2B]
+    end
+    
+    subgraph "External Services - Optional"
+        OpenAI[OpenAI API]
     end
     
     FastAPI --> Redis
     FastAPI --> PostgreSQL
     FastAPI --> FileStorage
-    FastAPI --> OpenAI
     FastAPI --> Ollama
+    FastAPI -.-> OpenAI
     
     Worker --> Redis
     Worker --> FileStorage
     Worker --> PostgreSQL
-    Worker --> OpenAI
 ```
 
 **Containers:**
-- **FastAPI Server**: Handles HTTP requests; orchestrates query pipeline synchronously (query rewriting → retrieval → reranking → synthesis)
+- **FastAPI Server**: Handles HTTP requests; orchestrates query pipeline synchronously (query rewriting → retrieval → reranking → synthesis). Query rewriting and synthesis use Gemma 4 2B via Ollama by default.
 - **Ingestion & Embedding Worker**: Single worker process handling document processing end-to-end: text extraction → chunking → embedding generation → storage. Uses `arq` (async Redis queue) for job management
 - **PostgreSQL + pgvector**: Stores documents, chunks, embeddings (HNSW index), and ingestion state
 - **Redis**: Manages background job queues via `arq`; also used for SSE message coordination
@@ -139,11 +138,11 @@ graph TB
 - **Text Extractor**: Extracts text from PDFs using `PyMuPDF` (fitz); reads plain text from TXT files
 - **Chunker**: Splits text into chunks of 512 tokens with 20% (102 token) overlap using recursive character text splitting
 - **Metadata Enricher**: Annotates each chunk with document title, section headers (if detectable), page numbers, chunk index, and character offsets
-- **Embedding Generator**: Creates 1536-dimensional vector embeddings using OpenAI `text-embedding-3-small`
+- **Embedding Generator**: Creates 768-dimensional vector embeddings using `BAAI/bge-base-en-v1.5` via `sentence-transformers` (local CPU inference, loaded at startup)
 - **Vector Indexer**: Stores embeddings in pgvector with HNSW index (m=16, ef_construction=64)
 
 ### Query Pipeline Components
-- **Query Rewriter**: Uses GPT-4o-mini to generate 3 semantically diverse query variants from the original query
+- **Query Rewriter**: Uses the configured LLM (Gemma 4 2B via Ollama by default) to generate 3 semantically diverse query variants from the original query
 - **Vector Searcher**: Performs cosine similarity search against pgvector HNSW index; retrieves top-k results per query variant
 - **Score Fusioner**: Merges results from multiple queries using Reciprocal Rank Fusion (RRF) with k=60
 - **Cross-Encoder Reranker**: Re-scores candidate chunks using `cross-encoder/ms-marco-MiniLM-L-6-v2` (hosted in-process via `sentence-transformers`)
@@ -190,7 +189,7 @@ chunks
 ├── section_header (VARCHAR, nullable)
 ├── char_start (INTEGER)
 ├── char_end (INTEGER)
-├── embedding (VECTOR(1536))
+├── embedding (VECTOR(768))
 ├── created_at (TIMESTAMPTZ)
 └── INDEX: HNSW on embedding (cosine, m=16, ef_construction=64)
 └── INDEX: (document_id, chunk_index) UNIQUE
@@ -215,7 +214,7 @@ stateDiagram-v2
     DocumentRecorded --> Chunking: 512 tokens, 102 token overlap
     Chunking --> ChunkingFailed: Chunking error
     Chunking --> EmbeddingGeneration: Chunks created
-    EmbeddingGeneration --> EmbeddingFailed: API error → retry
+    EmbeddingGeneration --> EmbeddingFailed: Model inference error → retry
     EmbeddingGeneration --> ChunksStored: Embeddings stored in pgvector
     ChunksStored --> Ready: Status → ready
     Ready --> [*]: Ingestion complete
@@ -246,7 +245,7 @@ stateDiagram-v2
 - **TextExtraction**: PDF/TXT text extraction (async worker)
 - **DocumentRecorded**: Document record and text created in PostgreSQL
 - **Chunking**: Text split into 512-token chunks with overlap and metadata
-- **EmbeddingGeneration**: Vector embeddings created via OpenAI API (batched, up to 2048 texts per request)
+- **EmbeddingGeneration**: Vector embeddings created via local `BAAI/bge-base-en-v1.5` model (batched, up to 32 per batch)
 - **ChunksStored**: Chunks and embeddings stored in pgvector
 - **Ready**: Document fully processed and searchable
 - **Failed**: Processing failed after retry exhaustion
@@ -255,14 +254,14 @@ stateDiagram-v2
 - Validation failures return 400 error immediately to user
 - Processing failures retry up to 3 times with exponential backoff (1s, 4s, 16s)
 - Failed jobs are marked with error message and visible via status API
-- Partial progress is tracked: if embedding fails, text extraction is not repeated
+- If any pipeline stage fails, the entire job retries from the beginning (per ADR-009). Partial progress tracking is at the document status level only. A cleanup step deletes any previously created chunks for the document before re-processing to prevent orphaned data.
 
 ### Query/Retrieval Flow
 
 ```mermaid
 stateDiagram-v2
     [*] --> QueryReceived: User submits query via POST
-    QueryReceived --> QueryRewrite: GPT-4o-mini generates 3 variants
+    QueryReceived --> QueryRewrite: Configured LLM generates 3 variants
     QueryRewrite --> QueryEmbedding: Embed all 4 queries (original + 3 variants)
     
     QueryEmbedding --> ParallelRetrieval: 4 parallel pgvector searches
@@ -295,8 +294,8 @@ stateDiagram-v2
 
 **States:**
 - **QueryReceived**: User query received via API
-- **QueryRewrite**: GPT-4o-mini generates 3 semantically diverse query variants
-- **QueryEmbedding**: All 4 queries (original + variants) embedded using `text-embedding-3-small` (same model as ingestion)
+- **QueryRewrite**: Configured LLM (Gemma 4 2B via Ollama by default, or GPT-4o-mini if user opted in) generates 3 semantically diverse query variants
+- **QueryEmbedding**: All 4 queries (original + variants) embedded using `BAAI/bge-base-en-v1.5` with query instruction prefix (same model as ingestion)
 - **ParallelRetrieval**: Concurrent vector similarity search for each query embedding; each retrieves top 20 chunks
 - **MergeResults**: Combine results from all 4 queries into a single candidate set
 - **ScoreFusion**: Deduplicate by `(document_id, chunk_index)` and merge scores using Reciprocal Rank Fusion (RRF) with k=60
@@ -304,7 +303,7 @@ stateDiagram-v2
 - **SelectTopK**: Select top 10 chunks by cross-encoder confidence score
 - **RelevanceCheck**: Verify that at least one chunk has cross-encoder confidence > 0.5 (calibrated threshold for ms-marco model)
 - **ConstructContext**: Build prompt context: order chunks by source position, include page numbers, prepend grounding system prompt, enforce ~4000 token budget
-- **LLMSynthesis**: Generate answer using selected LLM (GPT-4o-mini or Gemma 4 2B via Ollama) with structured citation format
+- **LLMSynthesis**: Generate answer using configured LLM (Gemma 4 2B via Ollama by default, or GPT-4o-mini if user opted in) with structured citation format
 - **StreamResponse**: Stream tokens to client via Server-Sent Events (SSE)
 - **InsufficientContext**: No relevant chunks found above threshold
 - **NoDocumentAnswer**: Return message indicating no relevant documents found for the query
@@ -325,15 +324,15 @@ stateDiagram-v2
 8. Text extracted from PDF via PyMuPDF or read from TXT
 9. Text split into chunks: 512 tokens, 102 token overlap, recursive character splitting
 10. Metadata annotated: document title, section headers, page numbers, chunk index, char offsets
-11. Embeddings generated via OpenAI API in batches (up to 2048 texts/request, 1536 dimensions)
+11. Embeddings generated locally via `BAAI/bge-base-en-v1.5` in batches (768 dimensions)
 12. Chunks and embeddings stored in pgvector via batch INSERT
 13. Document status updated to `ready`
 
 ### Query Processing Data Flow
 
 1. User submits query via `POST /api/v1/query` with model preference
-2. Query sent to GPT-4o-mini for rewriting → 3 diverse variants generated
-3. All 4 queries (original + 3 variants) embedded via `text-embedding-3-small`
+2. Query sent to configured LLM (Gemma 4 2B via Ollama by default) for rewriting → 3 diverse variants generated
+3. All 4 queries (original + 3 variants) embedded via `BAAI/bge-base-en-v1.5` (with query instruction prefix)
 4. 4 parallel cosine similarity searches executed against pgvector HNSW index
 5. Each search retrieves top 20 chunks (80 total candidates max)
 6. Results merged and deduplicated by `(document_id, chunk_index)` composite key
@@ -356,10 +355,10 @@ stateDiagram-v2
 | Database | PostgreSQL 16 + pgvector 0.7+ | Relational + vector in single DB, simpler ops, HNSW support |
 | Job Queue | Redis + `arq` | Lightweight async queue, minimal setup, retry support |
 | Vector Search | pgvector HNSW (cosine) | Sufficient for 100K chunks, ANN indexing, no extra infra |
-| Embedding Model | OpenAI `text-embedding-3-small` (1536d) | High quality, 8191 token limit, $0.02/1M tokens |
+| Embedding Model | `BAAI/bge-base-en-v1.5` (768d) via `sentence-transformers` | Local-only, free, CPU-friendly, MTEB 63.55, 512 token limit. No external fallback. See ADR-014 |
 | Reranking Model | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Well-benchmarked, runs on CPU, ~50ms per pair |
-| Cloud LLM | GPT-4o-mini | Fast, cost-effective, 128K context window |
-| Alternative LLM | Gemma 4 2B via Ollama (localhost:11434) | True local/private execution, zero API cost, runs on low-end machines (see ADR-013) |
+| Default LLM | Gemma 4 2B via Ollama (localhost:11434) | True local/private execution, zero API cost, 8192 token context window. Default for all LLM operations (see ADR-013) |
+| Optional LLM | GPT-4o-mini via OpenAI API | Fast, 128K context window. Opt-in only: requires `OPENAI_API_KEY` and explicit model selection |
 | Chunking | Recursive character, 512 tokens, 20% overlap | Predictable, respects sentence boundaries better than naive fixed-size |
 | Score Fusion | Reciprocal Rank Fusion (k=60) | Robust multi-query fusion, rank-based (not score-dependent) |
 | Relevance Threshold | Cross-encoder confidence > 0.5 | Calibrated for ms-marco model output range [0, 1] |
@@ -367,7 +366,7 @@ stateDiagram-v2
 | Text Extraction | PyMuPDF (fitz) | Fast, no external dependencies, good PDF support |
 | Streaming | Server-Sent Events (SSE) | Simple, unidirectional, native browser support |
 
-> **Note on embedding model**: Both ingestion and query must use the **same** embedding model (`text-embedding-3-small`). Mismatched models produce incompatible vector spaces and will yield meaningless similarity scores.
+> **Note on embedding model**: Both ingestion and query use `BAAI/bge-base-en-v1.5` (768d). This is the only supported embedding model in Phase 1. There is no OpenAI embedding fallback. The embedding model's BERT WordPiece tokenizer is used for all token counting (chunking and context construction).
 
 *Detailed rationale for each decision available in individual ADRs.*
 
@@ -375,7 +374,7 @@ stateDiagram-v2
 
 - **Document**: Uploaded file (PDF, TXT) with extracted text content and metadata
 - **Chunk**: Segment of document text (~512 tokens) with overlap, positional metadata, and embedding
-- **Embedding**: 1536-dimensional vector representation of chunk text for semantic similarity search
+- **Embedding**: 768-dimensional vector representation of chunk text for semantic similarity search (local `BAAI/bge-base-en-v1.5` model only)
 - **Query**: User question or search request submitted via API
 - **Query Rewrite**: LLM-generated semantic variant of original query for retrieval diversity
 - **Multi-Query**: Strategy of searching with multiple query variants to improve recall
@@ -389,6 +388,22 @@ stateDiagram-v2
 - **SSE**: Server-Sent Events — the streaming protocol used for real-time response delivery
 - **Grounding**: Constraining LLM output to only information present in the provided context
 - **Hallucination**: LLM generating content not grounded in provided context
+
+## Spec Dependency Graph
+
+```
+Spec 001 (Document Ingestion) → Spec 002 (Embedding & Storage) → Spec 003 (Retrieval Pipeline) → Spec 004 (Context & Synthesis)
+                                                                                                          ↓
+Spec 005 (API & Auth) ─────────────── integrates endpoints from ──────────────────── Specs 001, 003, 004
+                                                                                                          ↓
+Spec 006 (Observability) ─────────── cross-cutting concern across ────────────────── Specs 001-005
+```
+
+- **Spec 001** produces chunks with NULL embeddings → **Spec 002** populates embeddings
+- **Spec 002** creates HNSW index → **Spec 003** queries it during retrieval
+- **Spec 003** returns ranked chunks → **Spec 004** constructs context and synthesizes answers
+- **Spec 005** defines API contracts that specs 001, 003, 004 implement
+- **Spec 006** defines logging standards applied across all specs
 
 ## Non-Functional Requirements
 
@@ -457,8 +472,9 @@ stateDiagram-v2
 ## Key Assumptions
 
 1. **Single-user or small-team usage** in Phase 1 — no multi-tenancy
-2. **Internet connectivity required** — OpenAI API is a hard dependency for embeddings and primary LLM
+2. **Internet connectivity not required by default** — All default operations (embedding via `BAAI/bge-base-en-v1.5`, LLM via Gemma 4 2B/Ollama) run fully offline. Internet is required only if the user explicitly opts in to GPT-4o-mini by setting `OPENAI_API_KEY` and selecting the model
 3. **English-language documents only** in Phase 1
 4. **PDF text is extractable** — scanned/image-based PDFs are not supported
 5. **Documents are trusted** — no malicious file scanning beyond type/size validation
-6. **Ollama availability** — the Ollama service must be running locally (`localhost:11434`) for the alternative LLM option. Ollama does not require internet connectivity.
+6. **Ollama availability** — the Ollama service must be running locally (`localhost:11434`) with `gemma4:2b` model pulled. Ollama is **required** for default operation (not optional). Ollama does not require internet connectivity.
+7. **Minimum hardware**: 8GB RAM recommended. The full stack (embedding model ~440MB + cross-encoder ~200MB + Ollama/Gemma 4 2B ~4GB + PostgreSQL + Redis + Python runtime) requires approximately 5.5GB minimum when all components are active.

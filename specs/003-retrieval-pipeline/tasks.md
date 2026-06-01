@@ -8,14 +8,14 @@
 - [ ] Configure pgvector session parameter: `SET hnsw.ef_search = 40` at connection level (estimate: 0.5h)
 
 ## Phase 2: Core Implementation
-- [ ] Implement query rewriter: GPT-4o-mini prompt to generate 3 diverse query variants (estimate: 2h)
+- [ ] Implement query rewriter: configured LLM (Gemma 4 2B via Ollama default, GPT-4o-mini if opted in) prompt to generate 3 diverse query variants (estimate: 2h)
 - [ ] Implement query rewriter output parser: split response into individual queries, handle malformed output (estimate: 1h)
 - [ ] Implement query rewriter graceful degradation: on failure, use original query only with warning log (estimate: 1h)
-- [ ] Implement query embedding: embed 4 queries in single OpenAI API call (estimate: 1.5h)
+- [ ] Implement query embedding: embed 4 queries via local `BAAI/bge-base-en-v1.5` model with query instruction prefix (estimate: 1.5h)
 - [ ] Implement parallel vector search: 4 concurrent pgvector queries via asyncio.gather() (estimate: 3h)
 - [ ] Implement pgvector cosine similarity query with document status filter (estimate: 1.5h)
 - [ ] Implement RRF score fusion: deduplicate by (document_id, chunk_index), compute RRF scores with k=60 (estimate: 2h)
-- [ ] Implement cross-encoder reranking: prepare (query, chunk) pairs, run inference in thread pool (estimate: 3h)
+- [ ] Implement cross-encoder reranking: prepare (query, chunk) pairs, run inference in thread pool, apply sigmoid to raw logits for [0,1] confidence (estimate: 3h)
 - [ ] Implement cross-encoder timeout: cancel after 2 seconds, fall back to RRF-only ranking (estimate: 1h)
 - [ ] Implement relevance threshold check: flag insufficient_context if max score < 0.5 (estimate: 0.5h)
 - [ ] Implement top-K selection: select top 10 chunks from reranked results (estimate: 0.5h)

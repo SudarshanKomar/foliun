@@ -35,7 +35,7 @@ Strict rules for preventing data leaks:
 |-----------|------|--------|
 | API keys (`API_KEY`, `OPENAI_API_KEY`) | Never log | Security |
 | File content (raw bytes) | Never log | Size, privacy |
-| Embedding vectors (1536-dim arrays) | Never log | Size (6KB per vector) |
+| Embedding vectors (768-dim arrays) | Never log | Size (3KB per vector) |
 | Full chunk text | Truncate to 100 chars at INFO | Size |
 | Query text | Truncate to 200 chars at INFO | Privacy |
 | Full LLM prompts | DEBUG only, truncated | Size |

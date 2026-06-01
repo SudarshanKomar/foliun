@@ -4,8 +4,8 @@
 Embedding generation is the final stage of the ingestion worker pipeline. After spec 001 creates chunks and persists them with NULL embeddings, the embedding stage:
 
 1. Collects all chunk texts from the current job
-2. Batches them into OpenAI API requests (up to 2048 per batch)
-3. Receives 1536-dimensional vectors
+2. Encodes them locally using `BAAI/bge-base-en-v1.5` via `sentence-transformers` (batched, up to 32 per batch)
+3. Receives 768-dimensional vectors
 4. Updates the `chunks.embedding` column via batch UPDATE
 5. Updates document status to `ready`
 
@@ -17,23 +17,23 @@ Reference: `/docs/architecture/system-overview.md` — Embedding Worker Componen
 
 ### Embedding Generation Flow (within arq worker job)
 1. After chunking stage completes, collect all chunk IDs and content texts
-2. Split chunks into batches of ≤ 2048 texts
-3. For each batch:
-   a. Call OpenAI `embeddings.create()` with model `text-embedding-3-small`
-   b. Receive list of 1536-dimensional vectors
-   c. Map vectors to chunk IDs by index position
-4. Batch UPDATE `chunks` table: set `embedding = vector` WHERE `id = chunk_id`
-5. Verify all chunks have non-NULL embeddings
-6. Update document status to `ready`
+2. Pass all chunk texts to the embedding model (batched internally by `sentence-transformers`)
+3. Receive 768-dimensional vectors for each chunk
+4. Map vectors to chunk IDs by index position
+5. Batch UPDATE `chunks` table: set `embedding = vector` WHERE `id = chunk_id`
+6. Verify all chunks have non-NULL embeddings
+7. Update document status to `ready`
 
-### OpenAI API Call Pattern
+### Local Embedding Call Pattern
 ```python
-response = await openai_client.embeddings.create(
-    model="text-embedding-3-small",
-    input=chunk_texts,  # list of up to 2048 strings
-    encoding_format="float"
-)
-# response.data[i].embedding is a list of 1536 floats
+from sentence_transformers import SentenceTransformer
+
+# Loaded once at application startup
+embedding_model = SentenceTransformer("BAAI/bge-base-en-v1.5")
+
+# For document chunks (no instruction prefix)
+embeddings = embedding_model.encode(chunk_texts, batch_size=32, normalize_embeddings=True)
+# embeddings[i] is a numpy array of 768 floats
 ```
 
 ## API Design
@@ -41,17 +41,18 @@ This spec does not define external API endpoints. Embedding generation is intern
 
 ### Internal Interface
 ```python
-async def generate_embeddings(chunk_texts: list[str]) -> list[list[float]]:
-    """Generate embeddings for a list of chunk texts.
+def generate_embeddings(chunk_texts: list[str], is_query: bool = False) -> list[list[float]]:
+    """Generate embeddings for a list of texts using local model.
     
     Args:
-        chunk_texts: List of text strings to embed (max 2048 per batch)
+        chunk_texts: List of text strings to embed
+        is_query: If True, prepend query instruction prefix for retrieval
     
     Returns:
-        List of 1536-dimensional float vectors, same order as input
+        List of 768-dimensional float vectors, same order as input
     
     Raises:
-        EmbeddingError: If OpenAI API call fails after retries
+        EmbeddingError: If model inference fails after retries
     """
 ```
 
@@ -76,7 +77,7 @@ async def store_embeddings(chunk_ids: list[UUID], embeddings: list[list[float]])
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Embedding column (already created in spec 001 migration)
--- chunks.embedding VECTOR(1536)
+-- chunks.embedding VECTOR(768)
 
 -- HNSW index for cosine similarity search
 CREATE INDEX idx_chunks_embedding_hnsw ON chunks
@@ -101,26 +102,26 @@ WITH (m = 16, ef_construction = 64);
 ### Storage Estimates
 | Scale | Chunks | Embedding Storage | Total Index Size |
 |-------|--------|------------------|-----------------|
-| 100 docs | ~5K | ~30 MB | ~45 MB |
-| 1,000 docs | ~50K | ~300 MB | ~450 MB |
-| 10,000 docs | ~500K | ~3 GB | ~4.5 GB |
+| 100 docs | ~5K | ~15 MB | ~23 MB |
+| 1,000 docs | ~50K | ~150 MB | ~225 MB |
+| 10,000 docs | ~500K | ~1.5 GB | ~2.3 GB |
 
-Formula: 1536 dimensions × 4 bytes/float × N chunks = raw storage. HNSW index adds ~50% overhead.
+Formula: 768 dimensions × 4 bytes/float × N chunks = raw storage. HNSW index adds ~50% overhead.
 
 ## Pipeline Stages
 
 ### Stage 1: Batch Preparation
 - **Input**: List of chunk objects (id, content) from chunking stage
-- **Processing**: Split into batches of ≤ 2048 texts. Calculate total token count for cost logging.
-- **Output**: List of text batches with corresponding chunk IDs
+- **Processing**: Collect all chunk texts. No manual batching needed — `sentence-transformers` handles batching internally.
+- **Output**: List of chunk texts with corresponding chunk IDs
 - **Duration**: < 10ms
 
-### Stage 2: OpenAI API Call
-- **Input**: Batch of text strings (≤ 2048)
-- **Processing**: Call `openai.embeddings.create()`, await response
-- **Output**: List of 1536-dimensional vectors
-- **Duration**: ~2-5 seconds per batch (network + API processing)
-- **Retry**: 3 attempts with exponential backoff (1s, 4s, 16s)
+### Stage 2: Local Model Inference
+- **Input**: List of chunk texts
+- **Processing**: `embedding_model.encode(texts, batch_size=32, normalize_embeddings=True)` — runs on CPU
+- **Output**: List of 768-dimensional vectors (numpy arrays)
+- **Duration**: ~3-15 seconds for 50 chunks on CPU (varies by hardware)
+- **Retry**: 3 attempts with exponential backoff (1s, 4s, 16s) on failure
 
 ### Stage 3: Vector Storage
 - **Input**: Chunk IDs + embedding vectors
@@ -134,21 +135,29 @@ Formula: 1536 dimensions × 4 bytes/float × N chunks = raw storage. HNSW index 
 - **Output**: Document marked as searchable
 - **Duration**: < 100ms
 
+### Startup Validation
+At application startup, after loading the embedding model:
+1. Generate a test embedding for a dummy string to verify output dimensionality is 768
+2. If the `chunks` table contains any non-NULL embeddings, query one and verify its dimensionality matches 768
+3. If either check fails, log a critical error and refuse to start
+
+### Thread Safety
+The `SentenceTransformer` model is loaded once at startup and shared across requests. The `model.encode()` method is thread-safe for read-only inference. However, concurrent embedding requests from the ingestion worker and query pipeline should not overlap — the single-worker architecture (ADR-009) ensures sequential access during ingestion. Query-time embedding (spec 003) runs in the API server process, which is separate from the worker.
+
 ## Error Handling
 
 | Error | Detection | Response | Retry |
 |-------|-----------|----------|-------|
-| OpenAI timeout | `httpx.TimeoutException` | Log, retry batch | Yes (3x backoff) |
-| OpenAI rate limit (429) | HTTP 429 response | Wait `Retry-After` seconds, retry | Yes |
-| OpenAI server error (5xx) | HTTP 5xx response | Log, retry | Yes (3x backoff) |
-| OpenAI auth error (401) | HTTP 401 response | Mark failed, log critical | No |
+| Model load failure | `OSError`, `RuntimeError` at startup | Application fails to start, log critical | No (fatal) |
+| Inference error | `RuntimeError`, `torch` exception | Log, retry batch | Yes (3x backoff) |
+| Out of memory | `MemoryError` | Log critical, mark failed | No |
 | Token limit exceeded | Input validation | Truncate text, log warning | N/A |
 | pgvector write failure | Database exception | Retry batch | Yes (3x backoff) |
 | Partial embedding mismatch | Count validation | Retry entire batch | Yes |
 
-**Cost tracking**: Log total tokens embedded per document for cost monitoring. Format: `{"document_id": "...", "chunks": 47, "total_tokens": 24000, "estimated_cost_usd": 0.00048}`.
+**Performance tracking**: Log total chunks embedded per document and inference latency. Format: `{"document_id": "...", "chunks": 47, "embedding_model": "BAAI/bge-base-en-v1.5", "latency_ms": 4500}`.
 
 ## Related ADRs
 - ADR-001: Use PostgreSQL with pgvector for vector storage
-- ADR-004: Use OpenAI text-embedding-3-small for embeddings
+- ADR-014: Migrate to Local Embedding Model (BAAI/bge-base-en-v1.5) (supersedes ADR-004)
 - ADR-009: Single worker process for ingestion and embedding

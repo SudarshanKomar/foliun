@@ -33,8 +33,8 @@ We will use a **single worker process** that handles the entire ingestion pipeli
 ### Neutral
 - Partial progress tracking is still implemented: document status transitions through `pending → processing → ready/failed`
 - Can be split into separate workers in Phase 2 if bottleneck analysis shows embedding is the dominant cost
-- The re-extraction cost on retry is negligible compared to embedding API latency
+- The re-extraction cost on retry is negligible compared to embedding inference latency
 
 ## Related ADRs
 - ADR-003: Use Redis with arq for job queue management
-- ADR-004: Use OpenAI text-embedding-3-small for embeddings
+- ADR-014: Migrate to Local Embedding Model (BAAI/bge-base-en-v1.5) (supersedes ADR-004)

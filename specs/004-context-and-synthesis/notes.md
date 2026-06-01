@@ -5,7 +5,7 @@
 - [FastAPI StreamingResponse](https://fastapi.tiangolo.com/advanced/custom-response/#streamingresponse) — SSE implementation in FastAPI
 - [Ollama API Documentation](https://github.com/ollama/ollama/blob/main/docs/api.md) — Ollama REST API and OpenAI compatibility
 - [SSE Specification](https://html.spec.whatwg.org/multipage/server-sent-events.html) — W3C EventSource spec
-- [tiktoken](https://github.com/openai/tiktoken) — Token counting for context budget management
+- [transformers AutoTokenizer](https://huggingface.co/docs/transformers/main_classes/tokenizer) — BERT WordPiece tokenizer from `BAAI/bge-base-en-v1.5` for consistent token counting
 
 ## Design Discussions
 
@@ -21,11 +21,11 @@ We chose **position-based ordering** because:
 - Score-based ordering fragments the narrative and makes citation harder
 
 ### Token Budget: 4000 Tokens
-GPT-4o-mini has a 128K context window — we could theoretically provide much more context. However:
+Gemma 4 2B has an 8192 token context window. With ~200 tokens for system prompt + query overhead and reserving tokens for the response, ~4000 tokens is a safe budget for context. Additionally:
 - More context increases response latency (more tokens to process)
 - Diminishing returns: beyond ~10 chunks, additional context rarely improves answers
-- Cost scales linearly with input tokens
 - 4000 tokens ≈ 10 chunks × 400 tokens average (accounting for overlap and metadata headers)
+- The budget fits within both Gemma 4 2B (8192) and GPT-4o-mini (128K) context windows
 
 The budget includes chunk content + source headers. System prompt (~100 tokens) and user query (~50 tokens) are budgeted separately.
 

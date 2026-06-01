@@ -14,7 +14,7 @@ We will use **recursive character text splitting** with the following parameters
 - **Target chunk size**: 512 tokens
 - **Overlap**: 20% (102 tokens)
 - **Separator hierarchy**: `["\n\n", "\n", ". ", " ", ""]` (paragraphs → lines → sentences → words → characters)
-- **Token counting**: `tiktoken` with `cl100k_base` encoding (matches OpenAI models)
+- **Token counting**: BERT WordPiece tokenizer from `BAAI/bge-base-en-v1.5` via `transformers.AutoTokenizer` (matches the embedding model exactly, preventing silent truncation)
 - **Metadata per chunk**: document title, section header, page number, chunk index, char_start, char_end
 
 The recursive strategy attempts to split at the highest-level separator first (paragraph breaks), falling back to lower-level separators only when the resulting chunk exceeds the target size.
@@ -26,7 +26,7 @@ The recursive strategy attempts to split at the highest-level separator first (p
 - Predictable chunk sizes for consistent token budget management
 - 20% overlap ensures context is preserved across chunk boundaries
 - Simple implementation using LangChain's `RecursiveCharacterTextSplitter` or equivalent
-- Token-based sizing matches the embedding model's token limit (8191 tokens)
+- Token-based sizing matches the embedding model's max sequence length (512 tokens) exactly, preventing silent truncation during embedding
 
 ### Negative
 - Fixed-size approach doesn't adapt to document structure (e.g., a 512-token chunk may span two unrelated sections)
@@ -40,5 +40,5 @@ The recursive strategy attempts to split at the highest-level separator first (p
 - The separator hierarchy can be adjusted per document type if needed
 
 ## Related ADRs
-- ADR-004: Use OpenAI text-embedding-3-small for embeddings
+- ADR-014: Migrate to Local Embedding Model (BAAI/bge-base-en-v1.5) (supersedes ADR-004)
 - ADR-001: Use PostgreSQL with pgvector for vector storage

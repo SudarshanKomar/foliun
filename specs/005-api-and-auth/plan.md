@@ -112,7 +112,7 @@ Defined in specs 003 and 004.
 ```json
 {
   "query": "What are the main findings of the research paper?",
-  "model": "gpt-4o-mini"
+  "model": "gemma-4-2b"
 }
 ```
 
@@ -120,7 +120,7 @@ Defined in specs 003 and 004.
 ```python
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
-    model: Literal["gpt-4o-mini", "gemma-4-2b"] = "gpt-4o-mini"
+    model: Literal["gemma-4-2b", "gpt-4o-mini"] = "gemma-4-2b"
 ```
 
 **Response (200 OK, SSE Stream)**:
@@ -140,7 +140,7 @@ event: token
 data: {"content": " three key findings"}
 
 event: done
-data: {"sources_used": 2, "chunks_in_context": 5, "model": "gpt-4o-mini", "latency_ms": 3500}
+data: {"sources_used": 2, "chunks_in_context": 5, "model": "gemma-4-2b", "latency_ms": 3500}
 ```
 
 **Response (200 OK, Insufficient Context)**:
@@ -163,13 +163,16 @@ data: {"sources_used": 2, "chunks_in_context": 5, "model": "gpt-4o-mini", "laten
   "dependencies": {
     "postgresql": {"status": "connected", "latency_ms": 5},
     "redis": {"status": "connected", "latency_ms": 2},
-    "openai": {"status": "reachable", "latency_ms": 150},
-    "ollama": {"status": "reachable", "latency_ms": 10}
+    "ollama": {"status": "reachable", "latency_ms": 10},
+    "openai": {"status": "reachable", "latency_ms": 150}
   },
   "timestamp": "2025-01-15T10:30:00Z"
 }
 ```
-Note: The `ollama` dependency is only included when `OLLAMA_BASE_URL` is configured. Ollama health is checked via `GET {OLLAMA_BASE_URL}/api/tags`.
+Notes:
+- **Ollama** is always checked (required for default LLM operation). Health checked via `GET {OLLAMA_BASE_URL}/api/tags`.
+- **OpenAI** is only checked when `OPENAI_API_KEY` is configured. Omitted from response otherwise.
+- If any required dependency (PostgreSQL, Redis, Ollama) is down, overall status is `unhealthy` (503).
 
 **Response (503 Service Unavailable)**:
 ```json
@@ -179,7 +182,6 @@ Note: The `ollama` dependency is only included when `OLLAMA_BASE_URL` is configu
   "dependencies": {
     "postgresql": {"status": "connected", "latency_ms": 5},
     "redis": {"status": "disconnected", "error": "Connection refused"},
-    "openai": {"status": "reachable", "latency_ms": 150},
     "ollama": {"status": "reachable", "latency_ms": 10}
   },
   "timestamp": "2025-01-15T10:30:00Z"
@@ -208,8 +210,8 @@ This spec does not define storage. Authentication uses a single environment vari
 API_KEY=sk-your-secret-key-here        # Required
 DATABASE_URL=postgresql://...           # Required
 REDIS_URL=redis://localhost:6379       # Required
-OPENAI_API_KEY=sk-...                  # Required
-OLLAMA_BASE_URL=http://localhost:11434    # Optional, default shown
+OPENAI_API_KEY=sk-...                  # Optional (required only if user opts in to GPT-4o-mini LLM)
+OLLAMA_BASE_URL=http://localhost:11434    # Default shown. Ollama is required for default operation.
 CORS_ORIGINS=http://localhost:3000     # Optional, comma-separated
 STORAGE_PATH=./storage/documents       # Optional, default shown
 LOG_LEVEL=INFO                         # Optional, default INFO
@@ -273,3 +275,4 @@ async def verify_api_key(x_api_key: str = Header(...)):
 - ADR-008: Use Server-Sent Events for response streaming
 - ADR-010: Use API key authentication for Phase 1
 - ADR-013: Switch from E2B to Ollama (Gemma 4 2B) for Local LLM (supersedes ADR-011)
+- ADR-014: Migrate to Local Embedding Model (BAAI/bge-base-en-v1.5) (supersedes ADR-004)

@@ -7,7 +7,7 @@
 - [ ] Create `chunks` table migration with all columns and indexes (embedding column nullable) (estimate: 1h)
 - [ ] Set up arq worker with Redis connection and basic job handler (estimate: 2h)
 - [ ] Create `./storage/documents/` directory structure with proper permissions (estimate: 0.5h)
-- [ ] Set up tiktoken with cl100k_base encoding for token counting (estimate: 0.5h)
+- [ ] Set up BERT WordPiece tokenizer from `BAAI/bge-base-en-v1.5` via `transformers.AutoTokenizer` for token counting (estimate: 0.5h)
 
 ## Phase 2: Core Implementation
 - [ ] Implement file validation middleware: MIME type check (PDF, TXT), size check (≤50MB), empty check (estimate: 2h)
@@ -20,7 +20,8 @@
 - [ ] Implement recursive character text splitter: separator hierarchy, token-based sizing, overlap (estimate: 4h)
 - [ ] Implement metadata enrichment: page number mapping, section header detection, character offsets (estimate: 3h)
 - [ ] Implement chunk batch INSERT to PostgreSQL (estimate: 1.5h)
-- [ ] Implement ingestion worker job handler: extraction → chunking → enrichment → persistence → status update (estimate: 3h)
+- [ ] Implement ingestion worker job handler: cleanup existing chunks → extraction → chunking → enrichment → persistence → status update (estimate: 3h)
+- [ ] Implement chunk cleanup on retry: `DELETE FROM chunks WHERE document_id = :doc_id` before re-processing to prevent orphaned data (estimate: 0.5h)
 - [ ] Implement document status transitions (pending → processing → ready/failed) with updated_at timestamps (estimate: 1h)
 - [ ] Implement filename sanitization (remove path traversal characters) (estimate: 0.5h)
 

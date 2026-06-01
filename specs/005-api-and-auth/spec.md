@@ -14,7 +14,7 @@ This spec is the integration point for all other specs: it defines the external 
 - FR-2: All endpoints are versioned under `/api/v1/` prefix.
 - FR-3: All endpoints except `GET /api/v1/health` require API key authentication via `X-API-Key` header.
 - FR-4: API key is configured via `API_KEY` environment variable. Missing or invalid key returns `401 Unauthorized`.
-- FR-5: `GET /api/v1/health` returns system health status including dependency connectivity (PostgreSQL, Redis, OpenAI API, and Ollama when configured).
+- FR-5: `GET /api/v1/health` returns system health status including dependency connectivity (PostgreSQL, Redis, Ollama — all required). OpenAI connectivity is checked only when `OPENAI_API_KEY` is configured.
 - FR-6: All error responses use a consistent JSON format: `{"error": "<error_code>", "detail": "<human_readable_message>"}`.
 - FR-7: All successful responses include appropriate HTTP status codes: `200 OK`, `202 Accepted` (async operations), `400 Bad Request`, `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`, `503 Service Unavailable`.
 - FR-8: Request validation errors return `400` with specific field-level error messages.

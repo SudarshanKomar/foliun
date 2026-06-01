@@ -1,7 +1,9 @@
 # ADR-004: Use OpenAI text-embedding-3-small for Embeddings
 
+> **⚠ SUPERSEDED**: This ADR has been superseded by [ADR-014: Migrate to Local Embedding Model (BAAI/bge-base-en-v1.5)](014-migrate-to-local-embedding-model.md). OpenAI embeddings were fully replaced with a local model to enable offline operation, reduce costs, and improve privacy. The local model (`BAAI/bge-base-en-v1.5`, 768 dimensions) is the **only** embedding model in Phase 1. There is no OpenAI embedding fallback.
+
 ## Status
-Accepted
+Superseded by ADR-014
 
 ## Context
 The system requires a text embedding model to convert document chunks and user queries into vector representations for semantic similarity search. The model must produce high-quality embeddings for English text, support inputs up to 512 tokens (our chunk size), and be cost-effective for both ingestion and query workloads.
@@ -40,3 +42,4 @@ We will use **OpenAI `text-embedding-3-small`** for all embedding generation.
 ## Related ADRs
 - ADR-001: Use PostgreSQL with pgvector for vector storage
 - ADR-007: Use recursive character text splitting for chunking
+- ADR-014: Migrate to Local Embedding Model (supersedes this ADR)

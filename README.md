@@ -11,8 +11,8 @@ Foliun is a spec-driven RAG system that enables users to upload research documen
 - **Backend**: FastAPI (Python 3.11+)
 - **Database**: PostgreSQL 16 + pgvector 0.7+
 - **Job Queue**: Redis + arq
-- **Embeddings**: OpenAI `text-embedding-3-small` (1536 dimensions)
-- **LLM**: GPT-4o-mini (primary), Gemma 4 2B via Ollama (alternative)
+- **Embeddings**: `BAAI/bge-base-en-v1.5` (768 dimensions) via `sentence-transformers` — local-only, free, CPU-friendly
+- **LLM**: Gemma 4 2B via Ollama (default, local), GPT-4o-mini (optional opt-in)
 - **Reranking**: `cross-encoder/ms-marco-MiniLM-L-6-v2`
 - **Streaming**: Server-Sent Events (SSE)
 
@@ -22,7 +22,7 @@ Foliun is a spec-driven RAG system that enables users to upload research documen
 - **Intelligent Retrieval**: Multi-query search with RRF fusion and cross-encoder reranking
 - **Context-Aware Answers**: Token-budgeted responses with source citations
 - **Streaming Responses**: Real-time answer generation via SSE
-- **Local LLM Option**: Run Gemma 4 2B locally via Ollama for privacy
+- **Local-First Architecture**: All default operations run offline — local embeddings and Gemma 4 2B via Ollama. GPT-4o-mini available as opt-in alternative.
 - **API Key Authentication**: Secure access control
 
 ## Documentation
@@ -43,7 +43,7 @@ This project follows a spec-driven development approach with comprehensive docum
 - Streaming query responses
 - API key authentication
 - Observability (logging, metrics)
-- Local LLM support (Ollama)
+- Local-first LLM (Gemma 4 2B via Ollama, default) with optional GPT-4o-mini
 
 ## Getting Started
 

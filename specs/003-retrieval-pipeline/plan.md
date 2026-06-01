@@ -4,7 +4,7 @@
 The retrieval pipeline runs synchronously within the FastAPI request handler for `POST /api/v1/query`. It is orchestrated by the Query Orchestrator component, which coordinates 5 sequential stages:
 
 1. **Query Rewriting** (LLM call) → 4 query variants
-2. **Query Embedding** (OpenAI API) → 4 query vectors
+2. **Query Embedding** (local model) → 4 query vectors
 3. **Parallel Vector Search** (pgvector) → ~80 candidate chunks
 4. **Score Fusion** (RRF algorithm) → ranked candidate list
 5. **Cross-Encoder Reranking** (in-process model) → top 10 chunks
@@ -17,7 +17,7 @@ Reference: `/docs/architecture/system-overview.md` — Query Pipeline Components
 
 ### Stage 1: Query Rewriting
 1. Receive original user query string
-2. Send to GPT-4o-mini with system prompt:
+2. Send to configured LLM (Gemma 4 2B via Ollama by default, or GPT-4o-mini if user opted in) with system prompt:
    ```
    Generate 3 semantically diverse search queries based on the user's question.
    Each query should approach the topic from a different angle to maximize retrieval coverage.
@@ -29,9 +29,10 @@ Reference: `/docs/architecture/system-overview.md` — Query Pipeline Components
 
 ### Stage 2: Query Embedding
 1. Collect all 4 query strings
-2. Single API call: `openai.embeddings.create(model="text-embedding-3-small", input=queries)`
-3. Receive 4 vectors of 1536 dimensions
-4. Map vectors to queries by index position
+2. Prepend query instruction prefix: `"Represent this sentence for searching relevant passages: "` to each query
+3. Encode via `embedding_model.encode(prefixed_queries, normalize_embeddings=True)`
+4. Receive 4 vectors of 768 dimensions
+5. Map vectors to queries by index position
 
 ### Stage 3: Parallel Vector Search
 1. For each of 4 query vectors, execute concurrent pgvector search:
@@ -62,7 +63,7 @@ Reference: `/docs/architecture/system-overview.md` — Query Pipeline Components
 1. Load `cross-encoder/ms-marco-MiniLM-L-6-v2` model (loaded once at startup)
 2. Prepare (original_query, chunk_content) pairs for top 30 candidates
 3. Run cross-encoder inference in thread pool executor (CPU-bound)
-4. Receive confidence scores [0, 1] for each pair
+4. Receive logit scores from cross-encoder. Note: `ms-marco-MiniLM-L-6-v2` produces raw logits, not bounded [0, 1] probabilities. Apply sigmoid to convert to [0, 1] confidence range for threshold comparison.
 5. Sort by cross-encoder score descending
 6. Select top 10 chunks
 7. Check relevance threshold: if max score < 0.5 → insufficient context
@@ -105,9 +106,11 @@ The retrieval pipeline is internal to the query endpoint. The external API is `P
 ```python
 async def execute_retrieval(
     query: str,
+    model: str,           # "gemma-4-2b" (default) or "gpt-4o-mini"
     db: AsyncSession,
-    openai_client: AsyncOpenAI,
+    embedding_model: SentenceTransformer,
     cross_encoder: CrossEncoder,
+    llm_client: AsyncOpenAI,  # Ollama or OpenAI client based on model
 ) -> RetrievalResult:
     """Execute the full retrieval pipeline.
     
@@ -134,7 +137,7 @@ SET hnsw.ef_search = 40;
 | Stage | Input | Output | Duration Target | Fallback |
 |-------|-------|--------|----------------|----------|
 | 1. Query Rewrite | User query (str) | 4 query strings | < 1.5s | Original only |
-| 2. Query Embed | 4 query strings | 4 × VECTOR(1536) | < 500ms | None (fatal) |
+| 2. Query Embed | 4 query strings | 4 × VECTOR(768) | < 500ms | None (fatal) |
 | 3. Vector Search | 4 query vectors | ~80 chunks | < 500ms | None (fatal) |
 | 4. RRF Fusion | ~80 chunks | 30 ranked chunks | < 50ms | None |
 | 5. Rerank | 30 chunks + query | 10 ranked chunks | < 1.5s | Use RRF top 10 |
@@ -145,10 +148,10 @@ SET hnsw.ef_search = 40;
 
 | Error | Detection | Response | Logging |
 |-------|-----------|----------|---------|
-| Query rewrite timeout | `asyncio.TimeoutError` after 3s | Use original query only | WARN with latency |
-| Query rewrite LLM error | OpenAI API exception | Use original query only | WARN with error |
+| Query rewrite timeout | `asyncio.TimeoutError` after 3s (2× NFR-2 target of 1.5s) | Use original query only | WARN with latency |
+| Query rewrite LLM error | LLM exception (Ollama or OpenAI) | Use original query only | WARN with error |
 | Query rewrite bad output | Parsing failure (< 3 lines) | Use whatever parsed + original | WARN with raw response |
-| Embedding API failure | OpenAI exception | 503 to client | ERROR with details |
+| Embedding inference failure | Model/runtime exception | 503 to client | ERROR with details |
 | Vector search failure | Database exception | 503 to client | ERROR with query |
 | RRF produces 0 results | Empty candidate set | Return insufficient_context | INFO |
 | Reranker model failure | `sentence-transformers` exception | Use RRF-only ranking | WARN with error |
@@ -156,7 +159,7 @@ SET hnsw.ef_search = 40;
 | All scores below threshold | Max score < 0.5 | Return insufficient_context=true | INFO with scores |
 
 ## Related ADRs
-- ADR-004: Use OpenAI text-embedding-3-small for embeddings
+- ADR-014: Migrate to Local Embedding Model (BAAI/bge-base-en-v1.5) (supersedes ADR-004)
 - ADR-005: Use Reciprocal Rank Fusion for multi-query score merging
 - ADR-006: Use cross-encoder ms-marco-MiniLM-L-6-v2 for reranking
 - ADR-013: Switch from E2B to Ollama (Gemma 4 2B) for Local LLM (supersedes ADR-011)

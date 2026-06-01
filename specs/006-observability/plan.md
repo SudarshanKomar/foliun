@@ -123,8 +123,7 @@ Each stage of the ingestion pipeline logs its entry, exit, and any errors.
 | Job started | INFO | `document_id`, `filename` |
 | Extraction complete | INFO | `document_id`, `page_count`, `text_length`, `latency_ms` |
 | Chunking complete | INFO | `document_id`, `chunk_count`, `avg_tokens`, `latency_ms` |
-| Embedding batch sent | INFO | `document_id`, `batch_size`, `total_tokens`, `latency_ms` |
-| Embedding cost | INFO | `document_id`, `total_tokens`, `estimated_cost_usd` |
+| Embedding complete | INFO | `document_id`, `chunks`, `embedding_model`, `latency_ms` |
 | Storage complete | INFO | `document_id`, `chunks_stored`, `latency_ms` |
 | Job complete | INFO | `document_id`, `total_latency_ms`, `status: ready` |
 | Stage failure | ERROR | `document_id`, `stage`, `error_type`, `error_message`, `attempt` |
@@ -188,10 +187,11 @@ Logging must never cause application failures:
 The following must NEVER appear in logs:
 - `API_KEY`, `OPENAI_API_KEY` values
 - Full document file contents
-- Embedding vectors (1536-dimensional arrays)
+- Embedding vectors (768-dimensional arrays)
 - Full chunk text at INFO level (truncate to first 100 chars)
 
 ## Related ADRs
 - ADR-002: Use FastAPI as the backend framework
 - ADR-009: Single worker process for ingestion and embedding
 - ADR-013: Switch from E2B to Ollama (Gemma 4 2B) for Local LLM (supersedes ADR-011)
+- ADR-014: Migrate to Local Embedding Model (BAAI/bge-base-en-v1.5) (supersedes ADR-004)

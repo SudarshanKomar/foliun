@@ -15,7 +15,7 @@
 - [ ] Implement Pydantic validation error handler to convert to ErrorResponse format (estimate: 1h)
 - [ ] Implement request logging middleware: method, path, status, latency, correlation ID (estimate: 2h)
 - [ ] Implement correlation ID generation and propagation via request state (estimate: 1h)
-- [ ] Implement `GET /api/v1/health` endpoint: check PostgreSQL, Redis, OpenAI connectivity (estimate: 2h)
+- [ ] Implement `GET /api/v1/health` endpoint: check PostgreSQL, Redis, Ollama (all required); check OpenAI only when OPENAI_API_KEY configured (estimate: 2h)
 - [ ] Implement CORS middleware with configurable origins from environment variable (estimate: 0.5h)
 - [ ] Register all routers under `/api/v1/` prefix (estimate: 0.5h)
 - [ ] Implement 404 handler for undefined routes (estimate: 0.5h)

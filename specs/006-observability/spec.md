@@ -33,7 +33,7 @@ This is a cross-cutting spec that applies to all other specs. It defines the log
     - Total ingestion duration
     - Per-stage duration (extraction, chunking, embedding, storage)
     - Chunk count produced
-    - Embedding cost estimate (tokens × rate)
+    - Embedding model used and inference latency
     - Success/failure outcome
     - Retry count
 - FR-8: Document status tracking must be queryable via API: users can see `pending → processing → ready/failed` transitions via `GET /api/v1/documents/{id}/status`.

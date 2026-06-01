@@ -37,7 +37,7 @@ Reference: `/docs/architecture/system-overview.md` — Container View, Ingestion
    - Update `page_count` on document record (PDF only)
 4. **Chunking**:
    - Initialize `RecursiveCharacterTextSplitter` with separators `["\n\n", "\n", ". ", " ", ""]`, chunk_size=512 tokens, chunk_overlap=102 tokens
-   - Token counting via `tiktoken` with `cl100k_base` encoding
+   - Token counting via BERT WordPiece tokenizer from `BAAI/bge-base-en-v1.5` (loaded via `transformers.AutoTokenizer`)
    - Split extracted text into chunks
 5. **Metadata enrichment** (per chunk):
    - `document_title`: filename without extension
@@ -187,7 +187,7 @@ CREATE TABLE chunks (
     section_header VARCHAR(500),
     char_start INTEGER NOT NULL,
     char_end INTEGER NOT NULL,
-    embedding VECTOR(1536),  -- populated by spec 002
+    embedding VECTOR(768),  -- populated by spec 002 (768d for BAAI/bge-base-en-v1.5, local-only)
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -230,7 +230,7 @@ CREATE INDEX idx_chunks_document_id ON chunks (document_id);
 
 ### Stage 5: Chunking (async, worker)
 - **Input**: Raw text string
-- **Processing**: Recursive character text splitting with tiktoken counting
+- **Processing**: Recursive character text splitting with BERT WordPiece tokenizer counting
 - **Output**: List of chunk objects with content and positional metadata
 - **Duration**: < 500ms for typical document
 
@@ -261,7 +261,7 @@ CREATE INDEX idx_chunks_document_id ON chunks (document_id);
 | Chunking | Zero chunks | — | Mark `failed` immediately (no retry) |
 | Persistence | DB write failure | — | Retry up to 3x, then mark `failed` |
 
-**Retry strategy**: Exponential backoff via `arq` — delays of 1s, 4s, 16s. Maximum 3 retries. Failed jobs set document status to `failed` with error message.
+**Retry strategy**: Exponential backoff via `arq` — delays of 1s, 4s, 16s. Maximum 3 retries. On retry, existing chunks for the document are deleted before re-processing to prevent orphaned data (`DELETE FROM chunks WHERE document_id = :doc_id`). Failed jobs set document status to `failed` with error message.
 
 **Logging**: All errors logged as structured JSON with fields: `document_id`, `stage`, `error_type`, `error_message`, `attempt`, `timestamp`.
 
