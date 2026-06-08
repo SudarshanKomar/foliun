@@ -9,7 +9,7 @@ The AI Research Workspace requires both relational data storage (documents, chun
 Phase 1 targets 1,000+ documents and 100K+ chunks. The team is small, and operational simplicity is a priority. The system must support HNSW-based approximate nearest neighbor (ANN) search with cosine distance.
 
 ## Decision
-We will use **PostgreSQL 16 with pgvector 0.7+** as the single database for both relational data and vector similarity search.
+We will use **PostgreSQL 18 with pgvector 0.8.1** as the single database for both relational data and vector similarity search.
 
 - Vector embeddings stored in `VECTOR(768)` columns (768d for `BAAI/bge-base-en-v1.5` — the only embedding model, per ADR-014)
 - HNSW index with parameters: `m=16`, `ef_construction=64`, cosine distance operator

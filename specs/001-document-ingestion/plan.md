@@ -32,7 +32,7 @@ Reference: `/docs/architecture/system-overview.md` — Container View, Ingestion
 1. Worker dequeues job, loads document record from PostgreSQL
 2. Update document status to `processing`
 3. **Text extraction**:
-   - PDF: Open with `fitz.open()`, iterate pages, extract text via `page.get_text("text")`
+   - PDF: Open with `pypdf.PdfReader`, iterate pages, extract text via `page.extract_text()`
    - TXT: Read file content with UTF-8 encoding
    - Update `page_count` on document record (PDF only)
 4. **Chunking**:
@@ -224,7 +224,7 @@ CREATE INDEX idx_chunks_document_id ON chunks (document_id);
 
 ### Stage 4: Text Extraction (async, worker)
 - **Input**: File path, MIME type
-- **Processing**: PyMuPDF for PDF, direct read for TXT
+- **Processing**: pypdf for PDF, direct read for TXT
 - **Output**: Raw text string, page count
 - **Duration**: ~2s for 10-page PDF
 

@@ -8,8 +8,8 @@ Foliun is a spec-driven RAG system that enables users to upload research documen
 
 ## Tech Stack
 
-- **Backend**: FastAPI (Python 3.11+)
-- **Database**: PostgreSQL 16 + pgvector 0.7+
+- **Backend**: FastAPI (Python 3.14)
+- **Database**: PostgreSQL 18 + pgvector 0.8.1
 - **Job Queue**: Redis + arq
 - **Embeddings**: `BAAI/bge-base-en-v1.5` (768 dimensions) via `sentence-transformers` — local-only, free, CPU-friendly
 - **LLM**: Gemma 4 2B via Ollama (default, local), GPT-4o-mini (optional opt-in)

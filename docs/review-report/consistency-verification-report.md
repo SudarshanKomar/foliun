@@ -36,8 +36,8 @@ The following baseline was extracted from `/docs/architecture/system-overview.md
 ### Technology Stack
 | Component | Value |
 |-----------|-------|
-| Backend | FastAPI (Python 3.11+), Uvicorn |
-| Database | PostgreSQL 16 + pgvector 0.7+ |
+| Backend | FastAPI (Python 3.14), Uvicorn |
+| Database | PostgreSQL 18 + pgvector 0.8.1 |
 | Job Queue | Redis + arq |
 | Embedding | OpenAI `text-embedding-3-small` (1536d) |
 | Reranking | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
@@ -45,7 +45,7 @@ The following baseline was extracted from `/docs/architecture/system-overview.md
 | Alternative LLM | Gemma 4 2B via Ollama (localhost:11434) — ADR-013 |
 | Chunking | Recursive character, 512 tokens, 20% (102 token) overlap |
 | Score Fusion | RRF (k=60) |
-| Text Extraction | PyMuPDF (fitz) |
+| Text Extraction | pypdf |
 | Streaming | Server-Sent Events (SSE) |
 
 ### Key Numeric Values
@@ -278,15 +278,15 @@ The following baseline was extracted from `/docs/architecture/system-overview.md
 
 | Term | System Overview | ADRs | Specs | Status |
 |------|----------------|------|-------|--------|
-| PostgreSQL 16 + pgvector 0.7+ | ✅ | ✅ ADR-001 | ✅ All | Consistent |
-| FastAPI (Python 3.11+) | ✅ | ✅ ADR-002 | ✅ All | Consistent |
+| PostgreSQL 18 + pgvector 0.8.1 | ✅ | ✅ ADR-001 | ✅ All | Consistent |
+| FastAPI (Python 3.14) | ✅ | ✅ ADR-002 | ✅ All | Consistent |
 | Redis + arq | ✅ | ✅ ADR-003 | ✅ All | Consistent |
 | text-embedding-3-small (1536d) | ✅ | ✅ ADR-004 | ✅ All | Consistent |
 | ms-marco-MiniLM-L-6-v2 | ✅ | ✅ ADR-006 | ✅ All | Consistent |
 | GPT-4o-mini | ✅ | ✅ ADR-013 | ✅ All | Consistent |
 | Gemma 4 2B via Ollama | ✅ | ✅ ADR-013 | ✅ All | Consistent |
 | `"gemma-4-2b"` identifier | ✅ | ✅ ADR-013 | ✅ All | Consistent |
-| PyMuPDF (fitz) | ✅ | — | ✅ 001 | Consistent |
+| pypdf | ✅ | — | ✅ 001 | Consistent |
 | tiktoken (cl100k_base) | ✅ | — | ✅ 001, 004 | Consistent |
 | Ollama model pull tag | N/A | N/A | ⚠️ Conflicting | **Inconsistent** (MED-004) |
 

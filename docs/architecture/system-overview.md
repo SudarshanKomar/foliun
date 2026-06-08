@@ -135,7 +135,7 @@ graph TB
 
 ### Ingestion Worker Components
 - **File Validator**: Validates file type (PDF, TXT), size (max 50MB), and integrity
-- **Text Extractor**: Extracts text from PDFs using `PyMuPDF` (fitz); reads plain text from TXT files
+- **Text Extractor**: Extracts text from PDFs using `pypdf`; reads plain text from TXT files
 - **Chunker**: Splits text into chunks of 512 tokens with 20% (102 token) overlap using recursive character text splitting
 - **Metadata Enricher**: Annotates each chunk with document title, section headers (if detectable), page numbers, chunk index, and character offsets
 - **Embedding Generator**: Creates 768-dimensional vector embeddings using `BAAI/bge-base-en-v1.5` via `sentence-transformers` (local CPU inference, loaded at startup)
@@ -321,7 +321,7 @@ stateDiagram-v2
 5. Job enqueued to Redis via `arq` with document ID
 6. API returns `202 Accepted` with document ID and status URL
 7. Worker picks up job, updates status to `processing`
-8. Text extracted from PDF via PyMuPDF or read from TXT
+8. Text extracted from PDF via pypdf or read from TXT
 9. Text split into chunks: 512 tokens, 102 token overlap, recursive character splitting
 10. Metadata annotated: document title, section headers, page numbers, chunk index, char offsets
 11. Embeddings generated locally via `BAAI/bge-base-en-v1.5` in batches (768 dimensions)
@@ -351,8 +351,8 @@ stateDiagram-v2
 
 | Component | Technology | Rationale |
 |-----------|-----------|-----------|
-| Backend Framework | FastAPI (Python 3.11+) | Async support, native SSE, type hints, fast development |
-| Database | PostgreSQL 16 + pgvector 0.7+ | Relational + vector in single DB, simpler ops, HNSW support |
+| Backend Framework | FastAPI (Python 3.14) | Async support, native SSE, type hints, fast development |
+| Database | PostgreSQL 18 + pgvector 0.8.1 | Relational + vector in single DB, simpler ops, HNSW support |
 | Job Queue | Redis + `arq` | Lightweight async queue, minimal setup, retry support |
 | Vector Search | pgvector HNSW (cosine) | Sufficient for 100K chunks, ANN indexing, no extra infra |
 | Embedding Model | `BAAI/bge-base-en-v1.5` (768d) via `sentence-transformers` | Local-only, free, CPU-friendly, MTEB 63.55, 512 token limit. No external fallback. See ADR-014 |
@@ -363,7 +363,7 @@ stateDiagram-v2
 | Score Fusion | Reciprocal Rank Fusion (k=60) | Robust multi-query fusion, rank-based (not score-dependent) |
 | Relevance Threshold | Cross-encoder confidence > 0.5 | Calibrated for ms-marco model output range [0, 1] |
 | Context Budget | ~4000 tokens (≈10 chunks) | Fits within model limits with room for system prompt + answer |
-| Text Extraction | PyMuPDF (fitz) | Fast, no external dependencies, good PDF support |
+| Text Extraction | pypdf | Fast, no external dependencies, good PDF support |
 | Streaming | Server-Sent Events (SSE) | Simple, unidirectional, native browser support |
 
 > **Note on embedding model**: Both ingestion and query use `BAAI/bge-base-en-v1.5` (768d). This is the only supported embedding model in Phase 1. There is no OpenAI embedding fallback. The embedding model's BERT WordPiece tokenizer is used for all token counting (chunking and context construction).

@@ -11,7 +11,7 @@ Document ingestion is inherently asynchronous: text extraction and chunking can 
 - FR-1: Accept PDF and TXT file uploads via multipart/form-data POST request. Return `202 Accepted` with document ID and status URL immediately.
 - FR-2: Validate uploaded files synchronously before acceptance: file type must be PDF (application/pdf) or TXT (text/plain), file size must be ≤ 50MB, file must be non-empty.
 - FR-3: Store uploaded files to local filesystem at `./storage/documents/{document_uuid}/{original_filename}`.
-- FR-4: Extract text content from PDF files using PyMuPDF (fitz). For TXT files, read content directly with UTF-8 encoding.
+- FR-4: Extract text content from PDF files using pypdf. For TXT files, read content directly with UTF-8 encoding.
 - FR-5: Split extracted text into chunks of approximately 512 tokens with 20% (102 token) overlap using recursive character text splitting with separator hierarchy: `["\n\n", "\n", ". ", " ", ""]`.
 - FR-6: Annotate each chunk with metadata: document title (filename without extension), section header (if detectable from heading patterns), page number (PDF only), chunk index (0-based sequential), character start offset, character end offset.
 - FR-7: Persist document record in PostgreSQL with status tracking: `pending → processing → ready | failed`.
@@ -29,7 +29,7 @@ Document ingestion is inherently asynchronous: text extraction and chunking can 
 - NFR-6: File storage must be outside web-accessible paths to prevent direct file access.
 
 ## Constraints
-- **Technology**: PyMuPDF (fitz) for PDF extraction, BERT WordPiece tokenizer from `BAAI/bge-base-en-v1.5` via `transformers.AutoTokenizer` for token counting (matches embedding model exactly), `arq` for job queue.
+- **Technology**: pypdf for PDF extraction, BERT WordPiece tokenizer from `BAAI/bge-base-en-v1.5` via `transformers.AutoTokenizer` for token counting (matches embedding model exactly), `arq` for job queue.
 - **Scope**: Only PDF and TXT files supported. No OCR, no DOCX, no image extraction from PDFs.
 - **Language**: English-language documents only. No multilingual tokenization or encoding handling beyond UTF-8.
 - **Trust model**: Documents are trusted — no malware scanning, no content filtering beyond file type/size validation.

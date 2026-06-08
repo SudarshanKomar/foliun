@@ -1,7 +1,7 @@
 # Document Ingestion Notes
 
 ## Research Links
-- [PyMuPDF documentation](https://pymupdf.readthedocs.io/) — PDF text extraction, page iteration
+- [pypdf documentation](https://pypdf.readthedocs.io/) — PDF text extraction, page iteration
 - [transformers AutoTokenizer](https://huggingface.co/docs/transformers/main_classes/tokenizer) — BERT WordPiece tokenizer from `BAAI/bge-base-en-v1.5` for token counting
 - [LangChain RecursiveCharacterTextSplitter](https://python.langchain.com/docs/modules/data_connection/document_transformers/recursive_text_splitter) — Reference implementation for recursive splitting
 - [arq documentation](https://arq-docs.helpmanual.io/) — Async job queue with retry support

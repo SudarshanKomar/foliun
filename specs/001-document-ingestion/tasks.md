@@ -15,7 +15,7 @@
 - [ ] Implement `POST /api/v1/documents` endpoint: validate → store file → create DB record → enqueue job → return 202 (estimate: 3h)
 - [ ] Implement `GET /api/v1/documents/{id}/status` endpoint with chunk count aggregation (estimate: 1h)
 - [ ] Implement `GET /api/v1/documents` endpoint with status and chunk count (estimate: 1h)
-- [ ] Implement PDF text extraction using PyMuPDF: page iteration, text extraction, page-to-offset mapping (estimate: 3h)
+- [ ] Implement PDF text extraction using pypdf: page iteration, text extraction, page-to-offset mapping (estimate: 3h)
 - [ ] Implement TXT file reading with UTF-8 encoding and basic validation (estimate: 1h)
 - [ ] Implement recursive character text splitter: separator hierarchy, token-based sizing, overlap (estimate: 4h)
 - [ ] Implement metadata enrichment: page number mapping, section header detection, character offsets (estimate: 3h)

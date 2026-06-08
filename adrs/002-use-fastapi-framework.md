@@ -9,7 +9,7 @@ The backend framework must support asynchronous request handling (for parallel v
 Candidates considered: FastAPI, Flask, Django, Starlette (raw).
 
 ## Decision
-We will use **FastAPI (Python 3.11+)** as the backend framework.
+We will use **FastAPI (Python 3.14)** as the backend framework.
 
 - All API endpoints defined with Pydantic models for request/response validation
 - Async route handlers for non-blocking I/O (OpenAI API calls, database queries)
@@ -33,7 +33,7 @@ We will use **FastAPI (Python 3.11+)** as the backend framework.
 
 ### Neutral
 - FastAPI is built on Starlette; migration to raw Starlette is trivial if needed
-- Python 3.11+ offers improved performance over earlier versions
+- Python 3.14 offers improved performance over earlier versions
 
 ## Related ADRs
 - ADR-008: Use Server-Sent Events for response streaming
